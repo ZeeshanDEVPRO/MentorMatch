@@ -56,7 +56,7 @@ const MentorSchema = new mongoose.Schema({
     require: true,
     type: String,
   },
-  mentors: {
+  mentees: {
     type: [String],
     default: [],
   },
