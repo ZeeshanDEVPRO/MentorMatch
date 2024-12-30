@@ -104,35 +104,39 @@ const Mentee = () => {
   };
 
   // redirects to the chat page with the mentee ID
-  const handleConnect = async (menteeId) => {
+  const handleConnect = async (mentorId) => {
     try {
       const user = JSON.parse(localStorage.getItem("user"));
-      const userId = user?._id;
-
-      if (!userId) {
+      const menteeId = user?._id;
+  
+      if (!menteeId) {
         console.error('Error: User is not logged in or user ID is missing.');
+        alert('Please log in to connect with a mentor.');
         return;
       }
-
+  
       const apiUrl = 'https://mentormatch-ewws.onrender.com/connectmentee';
-      const data = { mentorId: userId, menteeId };
-
+      const data = { mentorId, menteeId };
+  
       const response = await fetch(apiUrl, {
         method: 'POST',
-        body: data
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
       });
-
+  
       const result = await response.json();
-
+  
       if (response.ok) {
-        console.log('Request sent to mentee:', result.message);
-        setStatus('Request Sent');
+        console.log('Request sent to mentor:', result.message);
+        alert('Request sent to mentor successfully!');
+        // Update UI to reflect the new status
+        // This could be updating a state variable or re-fetching mentor data
       } else {
         console.error(`Error: ${result.error}`);
         alert(`Failed to connect: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error connecting to mentee:', error.message);
+      console.error('Error connecting to mentor:', error.message);
       alert('An unexpected error occurred. Please try again.');
     }
   };

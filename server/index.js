@@ -167,7 +167,7 @@ app.post('/connectmentee', async (req, res) => {
 
     // Validate input
     if (!mentorId || !menteeId) {
-      return res.status(400).json({ error: 'Mentor ID and Mentee ID are required.',mentorId,menteeId });
+      return res.status(400).json({ error: 'Mentor ID and Mentee ID are required.' });
     }
 
     // Validate MongoDB ObjectIDs
@@ -175,25 +175,38 @@ app.post('/connectmentee', async (req, res) => {
       return res.status(400).json({ error: 'Invalid Mentor ID or Mentee ID.' });
     }
 
-    // Find the mentee in the database
-    const mentee = await Mentee.findById(menteeId);
-    if (!mentee) {
-      return res.status(404).json({ error: 'Mentee not found.' });
+    // Find the mentor in the database
+    const mentor = await Mentor.findById(mentorId);
+    if (!mentor) {
+      return res.status(404).json({ error: 'Mentor not found.' });
     }
 
-    // Check if status is already set for the mentor
-    if (mentee.status.has(mentorId)) {
-      return res.status(400).json({ error: 'Request already exists for this mentor.' });
+    // Check if status is already set for the mentee
+    const existingRequest = mentor.mentorshipRequests.find(
+      request => request.menteeId.toString() === menteeId
+    );
+    if (existingRequest) {
+      return res.status(400).json({ error: 'Request already exists for this mentee.' });
     }
 
-    // Update status for the mentee
-    mentee.status.set(mentorId, 'requested');
-    await mentee.save();
+    // Add new mentorship request
+    mentor.mentorshipRequests.push({
+      menteeId: menteeId,
+      status: 'pending'
+    });
+
+    // Add notification for the mentor
+    mentor.notifications.push({
+      message: `New mentorship request from mentee ${menteeId}`,
+      isRead: false
+    });
+
+    await mentor.save();
 
     // Return success response
     return res.status(200).json({
       message: 'Request sent to mentor.',
-      status: mentee.status.get(mentorId)
+      status: 'pending'
     });
   } catch (error) {
     console.error('Error in /connectmentee:', error.message);
