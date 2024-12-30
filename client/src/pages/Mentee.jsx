@@ -7,7 +7,7 @@ const Mentee = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [loader, setLoader] = useState(false);
-  const [status, setStatus] = useState("");
+  const [connectionStatus, setConnectionStatus] = useState({});
 
   const role = JSON.parse(localStorage.getItem("user"))?.role;
 
@@ -104,39 +104,11 @@ const Mentee = () => {
   };
 
   // redirects to the chat page with the mentee ID
-  const handleConnect = async (mentorId) => {
-    try {
-      const user = JSON.parse(localStorage.getItem("user"));
-      const menteeId = user?._id;
-  
-      if (!menteeId) {
-        console.error('Error: User is not logged in or user ID is missing.');
-        alert('Please log in to connect with a mentor.');
-        return;
-      }
-  
-      const apiUrl = 'https://mentormatch-ewws.onrender.com/connectmentee';
-      const data = { mentorId, menteeId };
-  
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-  
-      const result = await response.json();
-  
-      if (response.ok) {
-        console.log('Request sent to mentor:', result.message);
-
-      } else {
-        console.error(`Error: ${result.error}`);
-
-      }
-    } catch (error) {
-      console.error('Error connecting to mentor:', error.message);
-
-    }
+  const handleConnect = (menteeId) => {
+    setConnectionStatus((prevStatus) => ({
+      ...prevStatus,
+      [menteeId]: "Requested",
+    }));
   };
 
 
@@ -210,7 +182,7 @@ const Mentee = () => {
                     />
                     <div className="flex flex-col gap-4">
                       <h2 className="text-2xl font-bold text-[#3674c9]">{mentee.name}</h2>
-                      <div className="flex justify-between items-center max-1270:flex-col max-1270:items-start gap-4 max-1270:gap-4">
+                      <div className="flex justify-between items-center max-1270:flex-col max-1270:items-start gap-5 max-1270:gap-4">
                         <p className="max-470:text-[11px] text-sm text-white flex items-center gap-2">
                           <FaEnvelope className="text-white" /> {mentee.email}
                         </p>
@@ -238,9 +210,13 @@ const Mentee = () => {
                   </div>
 
                   {role === "mentor" &&
-                    (<button onClick={() => handleConnect(mentee._id)} className="mt-auto bg-yellow-500 text-white font-bold shadow-lg py-2 px-4 rounded-lg w-full hover:bg-yellow-600 transition duration-300 ease-in-out transform hover:-translate-y-1">
-                      {/* {status.mentee._id} */}hi
-                    </button>)
+                    (<button
+                      onClick={() => handleConnect(mentee._id)}
+                      className="mt-auto bg-yellow-500 text-white font-bold shadow-lg py-2 px-4 rounded-lg w-full hover:bg-yellow-600 transition duration-300 ease-in-out transform hover:-translate-y-1"
+                    >
+                      {connectionStatus[mentee._id] || "Connect"}
+                    </button>
+                    )
                   }
                 </div>
               ))

@@ -128,12 +128,12 @@ const Mentorship = () => {
                                             </div>
 
                                             {/* Chat Button */}
-                                            <button
+                                            {/* <button
                                                 onClick={() => handleChatClick(connection._id)}
                                                 className="w-full bg-yellow-500 text-white font-bold py-1 sm:py-2 px-2 sm:px-4 rounded-lg hover:bg-yellow-400 transition duration-300 ease-in-out transform hover:-translate-y-1"
                                             >
                                                 Chat Now
-                                            </button>
+                                            </button> */}
                                         </div>
                                     </div>
                                 </div>

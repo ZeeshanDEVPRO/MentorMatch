@@ -10,9 +10,9 @@ const Navbar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([
-    "You have a new message from John.",
-    "Your profile was viewed by Sarah.",
-    "Reminder: Meeting at 3 PM tomorrow."
+    "No new notifications.",
+    "Welcome to MentorMatch®!",
+   
   ]);
 
   useEffect(() => {

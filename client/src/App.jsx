@@ -12,7 +12,6 @@ import About from './pages/About';
 import Mentee from './pages/Mentee';
 import Mentor from './pages/Mentor';
 import Mentorship from './pages/Mentorship';
-import Chat from './pages/Chat';
 
 function App() {
   return (
@@ -32,11 +31,6 @@ function App() {
           <Route element={<PrivateComponent />}>
             <Route path='/mentorship' element={<Mentorship />} />
             <Route path="/profile" element={<ProfileSetUp />} />
-            <Route path="/chat" element={<Chat />} />
-
-            <Route path="/chat">
-              <Route path=":roomId" element={<Chat />} />
-            </Route>
           </Route>
         </Routes>
 
