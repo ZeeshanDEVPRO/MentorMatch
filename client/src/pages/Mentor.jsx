@@ -1,34 +1,91 @@
 import React, { useEffect, useState } from "react";
 import { FaSearch, FaPhone, FaEnvelope, FaWallet } from "react-icons/fa";
 import Navbar from "../components/Navbar";
-import { redirect } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const Mentor = () => {
   const [mentors, setMentors] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSkills, setSelectedSkills] = useState([]);
   const [loader, setLoader] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState({});
+  const [requests, setRequests] = useState({});
+  const user =  JSON.parse(localStorage.getItem("user"))
 
   const role = JSON.parse(localStorage.getItem("user"))?.role;
-
+  const navigate = useNavigate();
+  function doChat(request){
+    if(request.role === 'mentee'){
+        window.location.href = `/chat/${user._id}`
+    }else if(request.role === 'mentor'){
+        window.location.href = `/chat/${request._id}`
+    }
+}
   // Fetch mentors from the API
   const fetchMentors = async (query = "") => {
     setLoader(true);
     try {
-      const url = `https://mentormatch-ewws.onrender.com/mentor${query}`;
-      const response = await fetch(url, { method: "GET" });
-      const data = await response.json();
-
       const user = JSON.parse(localStorage.getItem("user"));
       const userId = user?._id;
-      const filteredMentors = data.filter((mentor) => mentor._id !== userId);
+
+      const url = `https://mentormatch-ewws.onrender.com/mentor${query}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: userId }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch mentors: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // Filter out mentors whose userId matches the logged-in user's ID
+      const filteredMentors = data.filter((mentor) => mentor.userId !== userId);
 
       setMentors(filteredMentors);
+      // Update request statuses for the mentors
+      const updatedRequests = {};
+      filteredMentors.forEach((mentor) => {
+        // Check if a request exists for this mentor and update status
+        const requestStatus = mentor.mentorshipRequests.find(
+          (request) => request.status === "pending" || request.status === "accepted"
+        );
+        if (requestStatus) {
+          updatedRequests[mentor._id] = requestStatus.status;
+        } else {
+          updatedRequests[mentor._id] = "no_request";
+        }
+      });
+      setRequests(updatedRequests);
     } catch (error) {
-      console.error("Error fetching mentors:", error);
+      console.error("Error fetching mentors:", error.message || error);
     } finally {
       setLoader(false);
+    }
+  };
+
+  // Handle request for mentorship
+  const handleRequest = async (mentorId) => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const request_from = user?._id;
+
+    if (!request_from || !mentorId) return;
+
+    try {
+      const response = await fetch("https://mentormatch-ewws.onrender.com/sendMentorshipRequest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_to: mentorId, request_from }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send mentorship request.");
+      }
+
+      const result = await response.json();
+      // Mark the request as pending after sending it
+      setRequests((prev) => ({ ...prev, [mentorId]: "pending" }));
+    } catch (error) {
+      console.error("Error sending mentorship request:", error.message || error);
     }
   };
 
@@ -40,66 +97,9 @@ const Mentor = () => {
     fetchMentors(query);
   };
 
-  // Handle skill filter
-  const handleSkillFilter = (skill) => {
-    let updatedSkills;
-    if (skill === "My Interests") {
-      if (selectedSkills.includes(skill)) {
-        updatedSkills = selectedSkills.filter((s) => s !== skill);
-      } else {
-        updatedSkills = ["My Interests"];
-      }
-    } else {
-      updatedSkills = selectedSkills.includes(skill)
-        ? selectedSkills.filter((s) => s !== skill)
-        : [...selectedSkills.filter((s) => s !== "My Interests"), skill];
-    }
-    setSelectedSkills(updatedSkills);
-
-    if (updatedSkills.includes("My Interests")) {
-      filterByInterests();
-    } else {
-      const query = updatedSkills.length ? `?skill=${updatedSkills.join(",")}` : "";
-      fetchMentors(query);
-    }
-  };
-
-  // filter mentors by interests
-  const filterByInterests = () => {
-    const myskill = JSON.parse(localStorage.getItem("user")) || [];
-    const myskills = myskill.skills || [];
-    if (myskills.length === 0) {
-      console.warn("No skills found in local storage for filtering.");
-      return;
-    }
-
-    setLoader(true);
-
-    try {
-      const user = JSON.parse(localStorage.getItem("user"));
-      const userId = user?._id;
-
-      const filteredMentors = mentors.filter(
-        (mentor) =>
-          mentor._id !== userId &&
-          mentor.skills?.some((skill) => myskills.includes(skill))
-      );
-
-      console.warn("filteredMentors", filteredMentors);
-      setMentors(filteredMentors);
-    } catch (error) {
-      console.error("Error filtering mentors by interests:", error);
-    } finally {
-      setLoader(false);
-    }
-  };
-
-  //handle connect
-  const handleConnect = (mentorId) => {
-    setConnectionStatus((prevStatus) => ({
-      ...prevStatus,
-      [mentorId]: "Requested",
-    }));
+  // Redirect to chat page with mentor id
+  const handleChatClick = (mentorId) => {
+    navigate(`/chat/${mentorId}`);
   };
 
   useEffect(() => {
@@ -127,24 +127,6 @@ const Mentor = () => {
           </div>
         </div>
 
-        {/* filters */}
-        <div className="flex flex-wrap justify-center gap-4 mb-8">
-          {["My Interests", "Cricket", "Football", "AI/ML", "Coding", "Data Analyst", "Web Development"].map(
-            (skill) => (
-              <button
-                key={skill}
-                onClick={() => handleSkillFilter(skill)}
-                className={`${selectedSkills.includes(skill)
-                  ? "bg-blue-500 text-white"
-                  : "bg-[#F0EAEB] text-gray-700"
-                  } border border-gray-300 p-2 px-4 rounded-lg cursor-pointer transition-all duration-300`}
-              >
-                {skill}
-              </button>
-            )
-          )}
-        </div>
-
         {loader ? (
           <div className="flex justify-center items-center h-[70vh]">
             <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -158,8 +140,6 @@ const Mentor = () => {
                   className="bg-gray-700 text-white max-[1300px]:p-2 p-4 rounded-lg shadow-md hover:shadow-lg transition flex flex-col"
                 >
                   <div className="flex flex-col md:flex-row md:items-start items-center gap-6 m-4">
-
-                    {/* Photo and Name */}
                     <div className="flex flex-col items-center gap-4">
                       <img
                         src={mentor.photo || "https://via.placeholder.com/150"}
@@ -171,7 +151,6 @@ const Mentor = () => {
                       </h2>
                     </div>
 
-                    {/* Mentor Details */}
                     <div className="flex flex-col gap-4 flex-1">
                       <div className="flex justify-between items-center max-1270:flex-col max-1270:items-start max-1270:gap-4">
                         <p className="text-sm flex items-center gap-2">
@@ -214,15 +193,31 @@ const Mentor = () => {
                     </div>
                   </div>
 
-                  {/* Chat Button */}
+                  {/* Request Button */}
                   {role === "mentee" && (
                     <button
-                    onClick={() => handleConnect(mentor._id)}
-                    className="mt-auto bg-yellow-500 text-white font-bold shadow-lg py-2 px-4 rounded-lg w-full hover:bg-yellow-600 transition duration-300 ease-in-out transform hover:-translate-y-1"
-                  >
-                    {connectionStatus[mentor._id] || "Connect"}
-                  </button>
-                  
+                      onClick={() =>
+                        requests[mentor._id] === "pending"
+                          ? null
+                          : requests[mentor._id] === "accepted"
+                          ? doChat(mentor)
+                          : handleRequest(mentor._id)
+                      }
+                      className={`mt-auto font-bold shadow-lg py-2 px-4 rounded-lg w-full ${
+                        requests[mentor._id] === "pending"
+                          ? "bg-gray-500 text-white cursor-not-allowed"
+                          : requests[mentor._id] === "accepted"
+                          ? "bg-green-500 text-white hover:bg-green-600 transition"
+                          : "bg-yellow-500 text-white hover:bg-yellow-600 transition"
+                      }`}
+                      disabled={requests[mentor._id] === "pending"}
+                    >
+                      {requests[mentor._id] === "pending"
+                        ? "Requested"
+                        : requests[mentor._id] === "accepted"
+                        ? "Chat Now"
+                        : "Request"}
+                    </button>
                   )}
                 </div>
               ))
@@ -232,9 +227,6 @@ const Mentor = () => {
               </p>
             )}
           </section>
-
-
-
         )}
       </div>
     </div>
