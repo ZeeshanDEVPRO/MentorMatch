@@ -68,8 +68,8 @@ const MentorSchema = new mongoose.Schema({
       },
       status: {
         type: String,
-        enum: ['connect', 'pending', 'accepted', 'declined'],
-        default: 'connect',
+        enum: ['pending', 'accepted', 'declined'],
+        default: 'pending',
       },
       requestedAt: {
         type: Date,
@@ -84,12 +84,17 @@ const MentorSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
       },
+      mentorshipRequestId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'MentorshipRequest',
+      },
       createdAt: {
         type: Date,
         default: Date.now,
       },
     },
   ],
+  
   createdAt: {
     type: Date,
     default: Date.now,
