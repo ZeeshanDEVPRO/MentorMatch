@@ -94,14 +94,16 @@ const Navbar = () => {
         <Link to="/" className="text-2xl font-bold text-purple-600">MentorMatch®</Link>
 
         <div className="hidden md:flex gap-10">
+          {userData?.role === "mentor" || userData?.role === "mentee" &&  (
           <Link to="/about" className="text-white hover:text-blue-600">About</Link>
+          )}
           {userData?.role === "mentor" && (
             <Link to="/mentees" className="text-white hover:text-blue-600">Mentees</Link>
           )}
           {userData?.role === "mentee" && (
             <Link to="/mentors" className="text-white hover:text-blue-600">Mentors</Link>
           )}
-          {isLoggedIn && (
+          {userData?.role === "mentor" || userData?.role === "mentee" && (
             <Link to="/mentorship" className="text-white hover:text-blue-600">Mentorship</Link>
           )}
         </div>
