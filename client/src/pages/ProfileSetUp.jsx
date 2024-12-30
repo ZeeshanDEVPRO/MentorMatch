@@ -45,8 +45,8 @@ const ProfileSetUp = () => {
     try {
       const baseUrl = "https://mentormatch-ewws.onrender.com";
       const endpoint = isMentor
-        ? `${baseUrl}/mentor?id=${currentUserId}`
-        : `${baseUrl}/mentee?id=${currentUserId}`;
+        ? `${baseUrl}/getmentor?id=${currentUserId}`
+        : `${baseUrl}/getmentee?id=${currentUserId}`;
 
       const response = await fetch(endpoint);
       if (!response.ok) {
