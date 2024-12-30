@@ -17,4 +17,5 @@ TECHNOLOGIES USED:
 3. Database-> MongoDB ATLAS(cloud database),Cloudinary
 4. Deployment -> Vercel(frontend), Render(backend)
 
-
+ADDITIONAL FEATURE:
+1. Real-time Chat using wss server is added for efficient communication between mentor and mentee.
