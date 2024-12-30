@@ -160,32 +160,49 @@ app.post('/connectmentor', async (req, res) => {
     }
   });
 
-  // API for mentor to connect with a mentee
+  // API to connect a mentee with a mentor
 app.post('/connectmentee', async (req, res) => {
-    try {
-      const { mentorId, menteeId } = req.body;
-  
-      // Validate input
-      if (!mentorId || !menteeId) {
-        return res.status(400).json({ error: 'Mentor ID and Mentee ID are required.' });
-      }
-  
-      // Search for mentor using ID
-      const mentee = await Mentee.findById(menteeId);
-      if (!mentee) {
-        return res.status(404).json({ error: 'Mentee not found.' });
-      }
-  
-      // Update status for the mentee
-      mentee.status.set(mentorId, 'requested');
-      await mentee.save();
-  
-      return res.status(200).json({ message: 'Request sent to mentor.', status: mentee.status.get(mentorId) });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: 'Internal server error.', details: error.message });
+  try {
+    const { mentorId, menteeId } = req.body;
+
+    // Validate input
+    if (!mentorId || !menteeId) {
+      return res.status(400).json({ error: 'Mentor ID and Mentee ID are required.' });
     }
-  });
+
+    // Validate MongoDB ObjectIDs
+    if (!mongoose.Types.ObjectId.isValid(mentorId) || !mongoose.Types.ObjectId.isValid(menteeId)) {
+      return res.status(400).json({ error: 'Invalid Mentor ID or Mentee ID.' });
+    }
+
+    // Find the mentee in the database
+    const mentee = await Mentee.findById(menteeId);
+    if (!mentee) {
+      return res.status(404).json({ error: 'Mentee not found.' });
+    }
+
+    // Check if status is already set for the mentor
+    if (mentee.status.has(mentorId)) {
+      return res.status(400).json({ error: 'Request already exists for this mentor.' });
+    }
+
+    // Update status for the mentee
+    mentee.status.set(mentorId, 'requested');
+    await mentee.save();
+
+    // Return success response
+    return res.status(200).json({ 
+      message: 'Request sent to mentor.', 
+      status: mentee.status.get(mentorId) 
+    });
+  } catch (error) {
+    console.error('Error in /connectmentee:', error.message);
+    return res.status(500).json({ 
+      error: 'Internal server error.', 
+      details: error.message 
+    });
+  }
+});
   
   // API for mentee to respond to a mentor connection request
   app.post('/respondmentee', async (req, res) => {
