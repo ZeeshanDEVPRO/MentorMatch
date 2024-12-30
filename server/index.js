@@ -117,6 +117,8 @@ app.post('/photo_upload', async (req,res) =>{
     const uploadResult = await cloudinary.uploader.upload(photo.tempFilePath);
     res.status(201).json({ photo_url: uploadResult.secure_url });
 })
+
+// function to sync data
 app.post('/syncdata', async (req, res) => {
     try {
         const { email } = req.body;
@@ -145,6 +147,7 @@ app.post('/syncdata', async (req, res) => {
     }
 });
 
+// sends request for mentorship
 app.post('/sendMentorshipRequest', async (req, res) => {
   const { request_to, request_from } = req.body; // Getting request_to and request_from from the request body
 
@@ -338,6 +341,8 @@ app.post('/register', async (req, res) => {
       res.status(500).json({ error: 'Internal server error', details: error.message });
     }
   });
+
+// accepts request for mentorship
   app.post('/acceptMentorshipRequest', async (req, res) => {
     const { userId, requestId, isMentor } = req.body;
   
@@ -457,6 +462,7 @@ app.get('/allmentees', async (req, resp) => {
     }
 });
 
+// gives search in mentor
 app.post('/mentor', async (req, resp) => {
   const { userId } = req.body; 
   try {
@@ -490,6 +496,7 @@ app.post('/mentor', async (req, resp) => {
   }
 });
 
+// handles request 
 app.put('/request/:role/:userId/:requestId', async (req, res) => {
   const { role, userId, requestId } = req.params;
   const { action } = req.body;
@@ -628,7 +635,7 @@ app.put('/request/:role/:userId/:requestId', async (req, res) => {
   }
 });
 
-
+// handles mentorship
 app.post('/mentorship/details/:role/:userId', async (req, res) => {
   const { role, userId } = req.params;
   const { ids } = req.body; // List of accumulated mentorIds or menteeIds
@@ -657,6 +664,8 @@ app.post('/mentorship/details/:role/:userId', async (req, res) => {
     res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 });
+
+// search for mentee
 app.post('/mentee', async (req, resp) => {
   const { userId } = req.body; 
   try {
