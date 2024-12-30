@@ -105,6 +105,30 @@ const getUsers = async (model, query, resp) => {
     }
 };
 
+// Get mentor by ID, skill, name, or email
+app.get('/getmentor', (req, resp) => {
+  const { id, skill, name, email } = req.query;
+  const query = {
+    ...(id && { _id: id }),
+    ...(skill && { skills: { $regex: skill, $options: 'i' } }),
+    ...(name && { name: { $regex: name, $options: 'i' } }),
+    ...(email && { email }),
+  };
+  getUsers(Mentor, query, resp);
+});
+
+// Get mentee by ID, skill, name, or email
+app.get('/getmentee', (req, resp) => {
+  const { id, skill, name, email } = req.query;
+  const query = {
+    ...(id && { _id: id }),
+    ...(skill && { skills: { $regex: skill, $options: 'i' } }),
+    ...(name && { name: { $regex: name, $options: 'i' } }),
+    ...(email && { email }),
+  };
+  getUsers(Mentee, query, resp);
+});
+
 // API for photo upload
 app.post('/photo_upload', async (req,res) =>{
     const photo = req.files.photo;
@@ -462,7 +486,7 @@ app.get('/allmentees', async (req, resp) => {
     }
 });
 
-// gives search in mentor
+// status update in mentor
 app.post('/mentor', async (req, resp) => {
   const { userId } = req.body; 
   try {
@@ -665,7 +689,7 @@ app.post('/mentorship/details/:role/:userId', async (req, res) => {
   }
 });
 
-// search for mentee
+// status update in mentee
 app.post('/mentee', async (req, resp) => {
   const { userId } = req.body; 
   try {
