@@ -49,10 +49,11 @@ const MenteeSchema = new mongoose.Schema({
     default: [],
   },
   status: {
+    require: true,
     type: Map,
     of: {
       type: String,
-      default: 'request',
+      default: 'connect',
     },
   },
   mentorshipRequests: [

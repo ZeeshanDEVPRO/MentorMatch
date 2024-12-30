@@ -61,10 +61,11 @@ const MentorSchema = new mongoose.Schema({
     default: [],
   },
   status: {
+    require: true,
     type: Map,
     of: {
       type: String,
-      default: 'request',
+      default: 'connect',
     },
   },
   mentorshipRequests: [
@@ -75,8 +76,8 @@ const MentorSchema = new mongoose.Schema({
       },
       status: {
         type: String,
-        enum: ['pending', 'accepted', 'declined'],
-        default: 'pending',
+        enum: ['connect', 'pending', 'accepted', 'declined'],
+        default: 'connect',
       },
       requestedAt: {
         type: Date,

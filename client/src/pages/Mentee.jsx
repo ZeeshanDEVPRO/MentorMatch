@@ -7,6 +7,7 @@ const Mentee = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [loader, setLoader] = useState(false);
+  const [status, setStatus] = useState("");
 
   const role = JSON.parse(localStorage.getItem("user"))?.role;
 
@@ -28,7 +29,7 @@ const Mentee = () => {
       const data = await response.json();
 
       // Filter out mentees whose userId matches the logged-in user's ID
-      const filteredMentees = data.filter((mentee) => mentee.userId !== userId);
+      const filteredMentees = data.filter((mentee) => mentee._id !== userId);
 
       setMentees(filteredMentees);
     } catch (error) {
@@ -103,9 +104,29 @@ const Mentee = () => {
   };
 
   // redirects to the chat page with the mentee ID
-  const handleConnect = (menteeId) => {
-    // Redirect to chat page with mentee ID
-    window.location.href = `/chat/${menteeId}`;
+  const handleConnect = async (menteeId) => {
+    const userId = JSON.parse(localStorage.getItem("user"))?._id; 
+    try {
+      const apiUrl = 'https://mentormatch-ewws.onrender.com/connectmentee';
+      const data = { mentorId: userId, menteeId };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        console.log("Request sent to mentee");
+        setStatus("Request Sent");
+      } else {
+        console.error(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error connecting to mentee:', error);
+      console.error('An unexpected error occurred. Please try again.');
+    }
   };
 
   useEffect(() => {
@@ -207,7 +228,7 @@ const Mentee = () => {
 
                   {role === "mentor" &&
                     (<button onClick={() => handleConnect(mentee._id)} className="mt-auto bg-yellow-500 text-white font-bold shadow-lg py-2 px-4 rounded-lg w-full hover:bg-yellow-600 transition duration-300 ease-in-out transform hover:-translate-y-1">
-                      Connect
+                      {status.mentee._id}
                     </button>)
                   }
                 </div>
