@@ -72,17 +72,12 @@ const MenteeSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
       },
-      mentorshipRequestId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'MentorshipRequest',
-      },
       createdAt: {
         type: Date,
         default: Date.now,
       },
     },
   ],
-  
   createdAt: {
     type: Date,
     default: Date.now,
