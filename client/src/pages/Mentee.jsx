@@ -1,37 +1,59 @@
 import React, { useState, useEffect } from "react";
-import { FaSearch, FaPhone, FaEnvelope, FaWallet } from "react-icons/fa";
+import { FaSearch, FaPhone, FaEnvelope } from "react-icons/fa";
 import Navbar from "../components/Navbar";
 
 const Mentee = () => {
   const [mentees, setMentees] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSkills, setSelectedSkills] = useState([]);
   const [loader, setLoader] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState({});
-
+  const [requests, setRequests] = useState({});
+  const user =  JSON.parse(localStorage.getItem("user"))
   const role = JSON.parse(localStorage.getItem("user"))?.role;
-
+  function doChat(request){
+    if(request.role === 'mentee'){
+        window.location.href = `/chat/${user._id}`
+    }else if(request.role === 'mentor'){
+        window.location.href = `/chat/${request._id}`
+    }
+}
   // Fetch mentees from the API
   const fetchMentees = async (query = "") => {
     setLoader(true);
     try {
-      // Get the logged-in user's ID from localStorage
-      const user = JSON.parse(localStorage.getItem("user")); // Parse the JSON string
-      const userId = user?._id; // Access the _id
+      const user = JSON.parse(localStorage.getItem("user"));
+      const userId = user?._id;
 
       const url = `https://mentormatch-ewws.onrender.com/mentee${query}`;
-      const response = await fetch(url, { method: "GET" });
-
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: userId }),
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch mentees: ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log(data);
 
       // Filter out mentees whose userId matches the logged-in user's ID
-      const filteredMentees = data.filter((mentee) => mentee._id !== userId);
+      const filteredMentees = data.filter((mentee) => mentee.userId !== userId);
 
       setMentees(filteredMentees);
+      // Update request statuses for the mentees
+      const updatedRequests = {};
+      filteredMentees.forEach((mentee) => {
+        // Check if a request exists for this mentee and update status
+        const requestStatus = mentee.mentorshipRequests.find(
+          (request) => request.status === "pending" || request.status === "accepted"
+        );
+        if (requestStatus) {
+          updatedRequests[mentee._id] = requestStatus.status;
+        } else {
+          updatedRequests[mentee._id] = "no_request";
+        }
+      });
+      setRequests(updatedRequests);
     } catch (error) {
       console.error("Error fetching mentees:", error.message || error);
     } finally {
@@ -39,85 +61,33 @@ const Mentee = () => {
     }
   };
 
-  // handles search for mentees
-  const handleSearch = (event) => {
-    const value = event.target.value;
-    setSearchTerm(value);
+  // Handle request for mentorship
+  const handleRequest = async (menteeId) => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const request_from = user?._id;
 
-    // Fetch mentees based on search term or fetch all mentees if search term is empty
-    const query = value ? `?name=${value}` : "";
-    fetchMentees(query);
-  };
-
-  // returns the filtered mentees based on the selected skills
-  const handleSkillFilter = (skill) => {
-    let updatedSkills;
-    if (skill === "My Interests") {
-      if (selectedSkills.includes(skill)) {
-        updatedSkills = selectedSkills.filter((s) => s !== skill);
-      } else {
-        updatedSkills = ["My Interests"];
-      }
-    } else {
-      updatedSkills = selectedSkills.includes(skill)
-        ? selectedSkills.filter((s) => s !== skill)
-        : [...selectedSkills.filter((s) => s !== "My Interests"), skill];
-    }
-    setSelectedSkills(updatedSkills);
-
-    if (updatedSkills.includes("My Interests")) {
-      filterByInterests();
-    } else {
-      const query = updatedSkills.length ? `?skill=${updatedSkills.join(",")}` : "";
-      fetchMentees(query);
-    }
-  };
-
-  // filters the mentees based on the user's interests
-  const filterByInterests = () => {
-    const myskill = JSON.parse(localStorage.getItem("user")) || [];
-    const myskills = myskill.skills || [];
-    if (myskills.length === 0) {
-      console.warn("No skills found in local storage for filtering.");
-      return;
-    }
-
-    setLoader(true);
+    if (!request_from || !menteeId) return;
 
     try {
-      const user = JSON.parse(localStorage.getItem("user"));
-      const userId = user?._id;
+      const response = await fetch("https://mentormatch-ewws.onrender.com/sendMentorshipRequest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_to: menteeId, request_from }),
+      });
 
-      const filteredMentees = mentees.filter(
-        (mentee) =>
-          mentee._id !== userId &&
-          mentee.skills?.some((skill) => myskills.includes(skill))
-      );
+      if (!response.ok) {
+        throw new Error("Failed to send mentorship request.");
+      }
 
-      console.warn("filteredMentees", filteredMentees);
-      setMentees(filteredMentees);
+      const result = await response.json();
+      // Mark the request as pending after sending it
+      setRequests((prev) => ({ ...prev, [menteeId]: "pending" }));
     } catch (error) {
-      console.error("Error filtering mentors by interests:", error);
-    } finally {
-      setLoader(false);
+      console.error("Error sending mentorship request:", error.message || error);
     }
   };
 
-  // redirects to the chat page with the mentee ID
-  const handleConnect = (menteeId) => {
-    setConnectionStatus((prevStatus) => ({
-      ...prevStatus,
-      [menteeId]: "Requested",
-    }));
-  };
-
-
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    const userId = user?._id;
-    console.log("User ID:", userId);
-
-    // Initial fetch to load all mentees
     fetchMentees();
   }, []);
 
@@ -135,30 +105,16 @@ const Mentee = () => {
               className="w-full p-3 border border-gray-300 rounded-md"
               placeholder="Search for a mentee"
               value={searchTerm}
-              onChange={handleSearch}
+              onChange={(event) => {
+                setSearchTerm(event.target.value);
+                const query = event.target.value ? `?name=${event.target.value}` : "";
+                fetchMentees(query);
+              }}
             />
             <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500">
               <FaSearch className="w-5 h-5" />
             </div>
           </div>
-        </div>
-
-        {/* Skills Filter */}
-        <div className="flex flex-wrap justify-center gap-4 mb-8">
-          {["My Interests", "Cricket", "Football", "AI/ML", "Coding", "Data Analyst", "Web Development"].map(
-            (skill) => (
-              <button
-                key={skill}
-                onClick={() => handleSkillFilter(skill)}
-                className={`${selectedSkills.includes(skill)
-                  ? "bg-blue-500 text-white"
-                  : "bg-[#F0EAEB] text-gray-700"
-                  } border border-gray-300 p-2 px-4 rounded-lg cursor-pointer transition-all duration-300`}
-              >
-                {skill}
-              </button>
-            )
-          )}
         </div>
 
         {/* Mentee Cards */}
@@ -167,7 +123,7 @@ const Mentee = () => {
             <div className="w-48 h-48 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : (
-          <section className="grid grid-cols-2 gap-8 max-1040:flex max-1040:flex-col max-470:px-2  max-[1225px]:px-4 px-7">
+          <section className="grid grid-cols-2 gap-8 max-1040:flex max-1040:flex-col max-470:px-2 max-[1225px]:px-4 px-7">
             {mentees.length > 0 ? (
               mentees.map((mentee) => (
                 <div
@@ -182,20 +138,13 @@ const Mentee = () => {
                     />
                     <div className="flex flex-col gap-4">
                       <h2 className="text-2xl font-bold text-[#3674c9]">{mentee.name}</h2>
-                      <div className="flex justify-between items-center max-1270:flex-col max-1270:items-start gap-5 max-1270:gap-4">
-                        <p className="max-470:text-[11px] text-sm text-white flex items-center gap-2">
-                          <FaEnvelope className="text-white" /> {mentee.email}
-                        </p>
-                        <p className="max-470:text-[11px] text-sm text-white flex items-center gap-2">
-                          <FaPhone className="text-white" /> {mentee.mobile ? `+91-${mentee.mobile}` : ""}
-                        </p>
-                      </div>
-
-                      {/* bio */}
-                      <p className="text-[12px] max-1270:hidden text-white">
-                        <span className="font-semibold"><span className="font-bold text-blue-600"></span></span> {mentee.bio}
+                      <p className="text-sm text-white flex items-center gap-2">
+                        <FaEnvelope className="text-white" /> {mentee.email}
                       </p>
-
+                      <p className="text-sm text-white flex items-center gap-2">
+                        <FaPhone className="text-white" /> {mentee.mobile ? `+91-${mentee.mobile}` : ""}
+                      </p>
+                      <p className="text-[12px] text-white">{mentee.bio}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {mentee.skills?.slice(0, 3).map((skill, index) => (
                           <span
@@ -209,15 +158,31 @@ const Mentee = () => {
                     </div>
                   </div>
 
-                  {role === "mentor" &&
-                    (<button
-                      onClick={() => handleConnect(mentee._id)}
-                      className="mt-auto bg-yellow-500 text-white font-bold shadow-lg py-2 px-4 rounded-lg w-full hover:bg-yellow-600 transition duration-300 ease-in-out transform hover:-translate-y-1"
+                  {role === "mentor" && (
+                    <button
+                      onClick={() =>
+                        requests[mentee._id] === "pending"
+                          ? null
+                          : requests[mentee._id] === "accepted"
+                          ? doChat(mentee)
+                          : handleRequest(mentee._id)
+                      }
+                      className={`mt-auto font-bold shadow-lg py-2 px-4 rounded-lg w-full ${
+                        requests[mentee._id] === "pending"
+                          ? "bg-gray-500 text-white cursor-not-allowed"
+                          : requests[mentee._id] === "accepted"
+                          ? "bg-green-500 text-white hover:bg-green-600 transition"
+                          : "bg-yellow-500 text-white hover:bg-yellow-600 transition"
+                      }`}
+                      disabled={requests[mentee._id] === "pending"}
                     >
-                      {connectionStatus[mentee._id] || "Connect"}
+                      {requests[mentee._id] === "pending"
+                        ? "Requested"
+                        : requests[mentee._id] === "accepted"
+                        ? "Chat Now"
+                        : "Request"}
                     </button>
-                    )
-                  }
+                  )}
                 </div>
               ))
             ) : (
@@ -226,9 +191,6 @@ const Mentee = () => {
               </p>
             )}
           </section>
-
-
-
         )}
       </div>
     </div>
