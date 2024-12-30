@@ -103,7 +103,7 @@ const Mentee = () => {
   };
 
   // redirects to the chat page with the mentee ID
-  const handleChatClick = (menteeId) => {
+  const handleConnect = (menteeId) => {
     // Redirect to chat page with mentee ID
     window.location.href = `/chat/${menteeId}`;
   };
@@ -178,7 +178,7 @@ const Mentee = () => {
                     />
                     <div className="flex flex-col gap-4">
                       <h2 className="text-2xl font-bold text-[#3674c9]">{mentee.name}</h2>
-                      <div className="flex justify-between items-center max-1270:flex-col max-1270:items-start max-1270:gap-4">
+                      <div className="flex justify-between items-center max-1270:flex-col max-1270:items-start gap-4 max-1270:gap-4">
                         <p className="max-470:text-[11px] text-sm text-white flex items-center gap-2">
                           <FaEnvelope className="text-white" /> {mentee.email}
                         </p>
@@ -206,8 +206,8 @@ const Mentee = () => {
                   </div>
 
                   {role === "mentor" &&
-                    (<button onClick={() => handleChatClick(mentee._id)} className="mt-auto bg-yellow-500 text-white font-bold shadow-lg py-2 px-4 rounded-lg w-full hover:bg-yellow-600 transition duration-300 ease-in-out transform hover:-translate-y-1">
-                      Chat Now
+                    (<button onClick={() => handleConnect(mentee._id)} className="mt-auto bg-yellow-500 text-white font-bold shadow-lg py-2 px-4 rounded-lg w-full hover:bg-yellow-600 transition duration-300 ease-in-out transform hover:-translate-y-1">
+                      Connect
                     </button>)
                   }
                 </div>

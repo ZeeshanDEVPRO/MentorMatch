@@ -100,6 +100,126 @@ wss.on('connection', (ws) => {
     });
 });
 
+// API for mentee to connect with a mentor
+app.post('/connectmentor', async (req, res) => {
+    try {
+      const { mentorId, menteeId } = req.body;
+  
+      // Validate input
+      if (!mentorId || !menteeId) {
+        return res.status(400).json({ error: 'Mentor ID and Mentee ID are required.' });
+      }
+  
+      // Search for mentor using ID
+      const mentor = await Mentor.findById(mentorId);
+      if (!mentor) {
+        return res.status(404).json({ error: 'Mentor not found.' });
+      }
+  
+      // Update status for the mentee
+      mentor.status.set(menteeId, 'requested');
+      await mentor.save();
+  
+      return res.status(200).json({ message: 'Request sent to mentor.', status: mentor.status.get(menteeId) });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'Internal server error.' });
+    }
+  });
+  
+  // API for mentor to respond to a mentee connection request
+  app.post('/respondmentor', async (req, res) => {
+    try {
+      const { mentorId, menteeId, action } = req.body;
+  
+      // Validate input
+      if (!mentorId || !menteeId || !['accepted', 'declined'].includes(action)) {
+        return res.status(400).json({ error: 'Mentor ID, Mentee ID, and valid action (accepted/declined) are required.' });
+      }
+  
+      // Search for mentor using ID
+      const mentor = await Mentor.findById(mentorId);
+      if (!mentor) {
+        return res.status(404).json({ error: 'Mentor not found.' });
+      }
+  
+      // Check if there is an existing request
+      const currentStatus = mentor.status.get(menteeId);
+      if (!currentStatus || currentStatus !== 'requested') {
+        return res.status(400).json({ error: 'No pending request found for this mentee.' });
+      }
+  
+      // Update status based on the action
+      mentor.status.set(menteeId, action);
+      await mentor.save();
+  
+      return res.status(200).json({ message: `Mentee request ${action}.`, status: mentor.status.get(menteeId) });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'Internal server error.' });
+    }
+  });
+
+  // API for mentor to connect with a mentee
+app.post('/connectmentee', async (req, res) => {
+    try {
+      const { mentorId, menteeId } = req.body;
+  
+      // Validate input
+      if (!mentorId || !menteeId) {
+        return res.status(400).json({ error: 'Mentor ID and Mentee ID are required.' });
+      }
+  
+      // Search for mentor using ID
+      const mentee = await Mentee.findById(menteeId);
+      if (!mentee) {
+        return res.status(404).json({ error: 'Mentee not found.' });
+      }
+  
+      // Update status for the mentee
+      mentee.status.set(mentorId, 'requested');
+      await mentee.save();
+  
+      return res.status(200).json({ message: 'Request sent to mentor.', status: mentee.status.get(mentorId) });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'Internal server error.' });
+    }
+  });
+  
+  // API for mentee to respond to a mentor connection request
+  app.post('/respondmentee', async (req, res) => {
+    try {
+      const { mentorId, menteeId, action } = req.body;
+  
+      // Validate input
+      if (!mentorId || !menteeId || !['accepted', 'declined'].includes(action)) {
+        return res.status(400).json({ error: 'Mentor ID, Mentee ID, and valid action (accepted/declined) are required.' });
+      }
+  
+      // Search for mentor using ID
+      const mentee = await Mentee.findById(menteeId);
+      if (!mentee) {
+        return res.status(404).json({ error: 'Mentee not found.' });
+      }
+  
+      // Check if there is an existing request
+      const currentStatus = mentee.status.get(mentorId);
+      if (!currentStatus || currentStatus !== 'requested') {
+        return res.status(400).json({ error: 'No pending request found for this mentee.' });
+      }
+  
+      // Update status based on the action
+      mentee.status.set(mentorId, action);
+      await mentee.save();
+  
+      return res.status(200).json({ message: `Mentee request ${action}.`, status: mentee.status.get(mentorId) });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'Internal server error.' });
+    }
+  });
+
 // Helper function for user queries
 const getUsers = async (model, query, resp) => {
     try {

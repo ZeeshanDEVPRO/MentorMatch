@@ -60,6 +60,13 @@ const MentorSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
+  status: {
+    type: Map,
+    of: {
+      type: String,
+      default: 'request',
+    },
+  },
   mentorshipRequests: [
     {
       menteeId: {
