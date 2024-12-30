@@ -183,7 +183,7 @@ app.post('/connectmentee', async (req, res) => {
       return res.status(200).json({ message: 'Request sent to mentor.', status: mentee.status.get(mentorId) });
     } catch (error) {
       console.error(error);
-      return res.status(500).json({ error: 'Internal server error.' });
+      return res.status(500).json({ error: 'Internal server error.', details: error.message });
     }
   });
   
