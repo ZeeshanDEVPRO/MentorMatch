@@ -167,12 +167,12 @@ app.post('/connectmentee', async (req, res) => {
 
     // Validate input
     if (!mentorId || !menteeId) {
-      return res.status(400).json({ error: 'Mentor ID and Mentee ID are required.' });
+      return res.status(400).json({ menteeId, mentorId, error: 'Mentor ID and Mentee ID are required.' });
     }
 
     // Validate MongoDB ObjectIDs
     if (!mongoose.Types.ObjectId.isValid(mentorId) || !mongoose.Types.ObjectId.isValid(menteeId)) {
-      return res.status(400).json({ error: 'Invalid Mentor ID or Mentee ID.' });
+      return res.status(400).json({ menteeId, mentorId, error: 'Invalid Mentor ID or Mentee ID.' });
     }
 
     // Find the mentor in the database

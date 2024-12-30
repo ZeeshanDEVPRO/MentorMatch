@@ -128,16 +128,14 @@ const Mentee = () => {
   
       if (response.ok) {
         console.log('Request sent to mentor:', result.message);
-        alert('Request sent to mentor successfully!');
-        // Update UI to reflect the new status
-        // This could be updating a state variable or re-fetching mentor data
+
       } else {
         console.error(`Error: ${result.error}`);
-        alert(`Failed to connect: ${result.error}`);
+
       }
     } catch (error) {
       console.error('Error connecting to mentor:', error.message);
-      alert('An unexpected error occurred. Please try again.');
+
     }
   };
 
@@ -241,7 +239,7 @@ const Mentee = () => {
 
                   {role === "mentor" &&
                     (<button onClick={() => handleConnect(mentee._id)} className="mt-auto bg-yellow-500 text-white font-bold shadow-lg py-2 px-4 rounded-lg w-full hover:bg-yellow-600 transition duration-300 ease-in-out transform hover:-translate-y-1">
-                      {/* {status.mentee.id} */}
+                      {/* {status.mentee._id} */}hi
                     </button>)
                   }
                 </div>
