@@ -1,153 +1,233 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { FaEnvelope, FaPhone, FaUserCircle } from 'react-icons/fa';
-import Navbar from '../components/Navbar';
+import React, { useEffect, useState } from "react";
+import { FaEnvelope, FaPhone, FaWallet } from "react-icons/fa";
+import Navbar from "../components/Navbar";
+import { useNavigate } from "react-router-dom";
 
 const Mentorship = () => {
-    const [connections, setConnections] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState(null);
+    const [requests, setRequests] = useState([]);
+    const [requestsm, setRequestsm] = useState([]);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
-    const user = JSON.parse(localStorage.getItem('user'));
-    const { role, _id: id, mentees, mentors } = user || {};
-
-    // fetches mentors for mentees and vice versa
-    const fetchConnections = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-
-        try {
-            const connectionIds = role === 'mentor' ? mentees : mentors;
-
-            if (!connectionIds || connectionIds.length === 0) {
-                setConnections([]);
-                return;
-            }
-
-            const endpoint = role === 'mentor' ? 'mentee' : 'mentor';
-            const responses = await Promise.all(
-                connectionIds.map(async (connectionId) => {
-                    const res = await fetch(
-                        `https://mentormatch-ewws.onrender.com/${endpoint}?id=${connectionId}`
-                    );
-                    if (!res.ok)
-                        throw new Error(`Failed to fetch ${endpoint} with ID: ${connectionId}`);
-                    const data = await res.json();
-                    return data[0]; // Assuming the API returns an array with one object
-                })
-            );
-
-            setConnections(responses.filter(Boolean)); // Remove null/undefined responses
-        } catch (err) {
-            console.error('Error fetching connections:', err);
-            setError('Failed to fetch connections. Please try again later.');
-        } finally {
-            setLoading(false);
+    function doChat(request){
+        if(request.role === 'mentee'){
+            window.location.href = `/chat/${user._id}`
+        }else if(request.role === 'mentor'){
+            window.location.href = `/chat/${request._id}`
+        }
+    }
+    // Fetch user data from localStorage
+    useEffect(() => {
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        if (storedUser) {
+            setUser(storedUser);
+            setRequestsm(storedUser.mentorshipRequests); // Store local data
+        } else {
+            setError("No user found in localStorage");
         }
     }, []);
 
+    // Fetch mentorship data based on accumulated mentorId or menteeId
     useEffect(() => {
-        if (user) fetchConnections();
-    }, []);
+        const fetchMentorshipDetails = async () => {
+            const storedUser = JSON.parse(localStorage.getItem("user"));
 
-    // redirects to chat page with the connection ID
-    const handleChatClick = (connectionId) => {
-        window.location.href = `/chat/${connectionId}`;
+            if (!storedUser) return;
+            if (storedUser.mentorshipRequests.length === 0) return;
+
+            try {
+                const ids = storedUser.mentorshipRequests.map(request =>
+                    storedUser.role === 'mentee' ? request.mentorId : request.menteeId
+                );
+
+                const role = storedUser.role;
+                const userId = storedUser._id;
+
+                const response = await fetch(`https://mentormatch-ewws.onrender.com/mentorship/details/${role}/${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ ids }),
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    if (role === 'mentee') {
+                        // Add status from localStorage (requestsm)
+                        const mergedRequests = data.mentorDetails.map(request => {
+                            const storedRequest = requestsm.find(r => r.mentorId === request._id);
+                            return { ...request, status: storedRequest?.status || "pending" };
+                        });
+                        setRequests(mergedRequests);
+                    } else {
+                        const mergedRequests = data.menteeDetails.map(request => {
+                            const storedRequest = requestsm.find(r => r.menteeId === request._id);
+                            return { ...request, status: storedRequest?.status || "pending" };
+                        });
+                        setRequests(mergedRequests);
+                    }
+                } else {
+                    setError(data.message);
+                }
+            } catch (error) {
+                console.error('Error fetching mentorship details:', error);
+                setError('There was an error fetching the mentorship details.');
+            }
+        };
+
+        fetchMentorshipDetails();
+    }, [user, requestsm]);
+
+    const handleRequestResponse = async (requestId, action, requestType) => {
+        try {
+            const url =
+                requestType === "mentor"
+                    ? `https://mentormatch-ewws.onrender.com/request/mentor/${user._id}/${requestId}`
+                    : `https://mentormatch-ewws.onrender.com/request/mentee/${user._id}/${requestId}`;
+
+            const response = await fetch(url, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ action }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                setRequests((prevRequests) =>
+                    prevRequests.map((request) =>
+                        request._id === requestId ? { ...request, status: action } : request
+                    )
+                );
+            } else {
+                alert(data.message);
+            }
+        } catch (error) {
+            console.error("Error updating request:", error);
+            setError("There was an error processing your request.");
+        }
     };
 
-    return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800">
-            <Navbar />
-            <div className="container mx-auto px-4 py-8">
-                {loading ? (
-                    <div className="flex justify-center items-center h-64">
-                        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                ) : connections.length === 0 ? (
-                    <div className="text-center text-gray-300 bg-gray-700 p-6 rounded-lg shadow-lg">
-                        <FaUserCircle className="mx-auto text-6xl mb-4" />
-                        <p className="text-xl">You don't have any {role === 'mentor' ? 'mentees' : 'mentors'} yet.</p>
-                    </div>
-                ) : (
-                    <>
-                        <h1 className="text-4xl font-bold text-center mb-12 text-white">
-                            {role === 'mentor' ? 'Interact with your Mentees' : 'Interact with your Mentors'}
-                        </h1>
-                        <div className="px-[12vw] sm:px-[4vw] py-[5vh] sm:py-4 grid grid-cols-1 gap-8 lg:grid-cols-2">
-                            {connections.map((connection) => (
-                                <div
-                                    key={connection._id}
-                                    className="bg-gray-800 rounded-xl shadow-lg overflow-hidden transform transition duration-300 hover:scale-105"
-                                >
-                                    <div className="flex items-center justify-center max-[560px]:flex-col">
 
-                                        {/* Image Section */}
-                                        <div className="relative h-48 md:h-auto md:w-1/3 flex-shrink-0 overflow-hidden p-4">
+
+    return (
+        <div>
+            <Navbar />
+            <div className="py-[5vh] px-[8vw] bg-gray-800 min-h-screen">
+                <h1 className="text-3xl font-bold text-center mb-6 text-white">
+                    {user?.role === "mentor" ? "Mentorship Requests" : "Mentorship Offers"}
+                </h1>
+
+                {/* Requests Section */}
+                <div>
+                    {requests.length === 0 ? (
+                        <div className="text-center text-gray-300">
+                            <p>No mentorship requests at the moment.</p>
+                        </div>
+                    ) : (
+                        <section className="grid grid-cols-1 md:grid-cols-2 gap-8 max-[1300px]:gap-4 max-[1300px]:px-4 px-6">
+                            {requests.map((request) => (
+                                <div
+                                    key={request._id}
+                                    className="bg-gray-700 text-white p-4 rounded-lg shadow-md hover:shadow-lg transition"
+                                >
+                                    <div className="flex flex-col md:flex-row items-center gap-6">
+                                        <div className="flex flex-col items-center gap-4">
                                             <img
+                                                src={request.photo}
+                                                alt={request.name}
                                                 className="w-52 h-52 rounded-md object-cover shadow-md"
-                                                src={
-                                                    connection.photo ||
-                                                    'https://via.placeholder.com/300?text=No+Image'
-                                                }
-                                                alt={connection.name}
                                             />
+                                            <h2 className="text-2xl font-bold text-[#3674c9] text-center">{request.name}</h2>
                                         </div>
 
-                                        {/* Content Section */}
-                                        <div className="flex-grow p-6 sm:p-4">
-                                            {/* Name Section */}
-                                            <h2 className="text-lg font-bold text-white mb-4 sm:text-lg">
-                                                {connection.name}
-                                            </h2>
-
-                                            {/* Bio */}
-                                            <p className="text-gray-300 text-xs mb-4 line-clamp-3 sm:text-xs">
-                                                {connection.bio || 'No bio available'}
+                                        <div className="flex flex-col gap-4 flex-1">
+                                            <div className="flex justify-between items-center max-1270:flex-col max-1270:items-start max-1270:gap-4">
+                                                <p className="text-sm flex items-center gap-2">
+                                                    <FaEnvelope className="text-white" /> {request.email || "N/A"}
+                                                </p>
+                                                <p className="text-sm flex items-center gap-2">
+                                                    <FaPhone className="text-white" />{" "}
+                                                    {request.mobile ? `+91-${request.mobile}` : "N/A"}
+                                                </p>
+                                            </div>
+                                            <p className="text-sm">
+                                                <span className="font-semibold">Availability:</span>{" "}
+                                                {request.availability || "N/A"}
                                             </p>
-
-                                            {/* Contact Information */}
-                                            <div className="flex items-center text-sm text-gray-400 mb-2 sm:text-xs">
-                                                <FaEnvelope className="mr-2" />
-                                                {connection.email || 'N/A'}
-                                            </div>
-                                            <div className="flex items-center text-sm text-gray-400 mb-4 sm:text-xs">
-                                                <FaPhone className="mr-2" />
-                                                {connection.mobile || 'N/A'}
-                                            </div>
-
-                                            {/* Skills */}
-                                            <h3 className="text-lg font-semibold text-white mb-2 sm:text-sm">Skills</h3>
-                                            <div className="flex flex-wrap gap-2 mb-6">
-                                                {connection.skills.map((skill, index) => (
-                                                    <span
-                                                        key={index}
-                                                        className="bg-blue-900 text-blue-200 text-xs font-medium px-2.5 py-1 rounded-full"
-                                                    >
-                                                        {skill}
-                                                    </span>
-                                                ))}
-                                            </div>
-
-                                            {/* Chat Button */}
-                                            {/* <button
-                                                onClick={() => handleChatClick(connection._id)}
-                                                className="w-full bg-yellow-500 text-white font-bold py-1 sm:py-2 px-2 sm:px-4 rounded-lg hover:bg-yellow-400 transition duration-300 ease-in-out transform hover:-translate-y-1"
-                                            >
-                                                Chat Now
-                                            </button> */}
+                                            <p className="text-sm">
+                                                <span className="font-semibold">Experience:</span>
+                                                <ul className="list-disc pl-5 mt-1">
+                                                    {request.experience?.map((exp, index) => (
+                                                        <li key={index}>{exp}</li>
+                                                    ))}
+                                                </ul>
+                                            </p>
+                                            <p className="text-sm flex items-center gap-2">
+                                                <button className="flex items-center gap-2 bg-green-600 text-white font-bold py-1 px-3 rounded-full shadow-md">
+                                                    <FaWallet className="h-[20px]" />
+                                                    {request.charges ? `₹${request.charges} / hour` : "N/A"}
+                                                </button>
+                                            </p>
                                         </div>
                                     </div>
+
+                                    {/* Request Action Buttons */}
+                                    {user?.role === "mentor" && request.status === "pending" && (
+                                        <div className="flex justify-between gap-4 mt-4 w-full">
+                                            <button
+                                                onClick={() => handleRequestResponse(request._id, "accepted", 'mentor')}
+                                                className="bg-green-600 text-white w-full py-2 px-4 rounded-full hover:bg-green-700"
+                                            >
+                                                Accept
+                                            </button>
+                                            <button
+                                                onClick={() => handleRequestResponse(request._id, "declined", 'mentor')}
+                                                className="bg-red-600 text-white py-2 px-4 w-full rounded-full hover:bg-red-700"
+                                            >
+                                                Reject
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {user?.role === "mentee" && request.status === "pending" && (
+                                        <div className="flex justify-between gap-4 mt-4 w-full">
+                                            <button
+                                                onClick={() => handleRequestResponse(request._id, "accepted", 'mentee')}
+                                                className="bg-green-600 text-white w-full py-2 px-4 rounded-full hover:bg-green-700"
+                                            >
+                                                Accept
+                                            </button>
+                                            <button
+                                                onClick={() => handleRequestResponse(request._id, "declined", 'mentee')}
+                                                className="bg-red-600 text-white py-2 px-4 w-full rounded-full hover:bg-red-700"
+                                            >
+                                                Reject
+                                            </button>
+                                        </div>
+                                    )}
+                                    {request.status === "accepted" && (
+                                        <div className="flex justify-between gap-4 mt-4 w-full">
+                                            <button
+                                                onClick={()=>doChat(request)}
+                                                className={`mt-auto font-bold shadow-lg py-2 px-4 rounded-lg w-full bg-green-500 text-white hover:bg-green-600 transition`}
+                                            >
+                                                Chat Now
+                                            </button>
+
+                                        </div>
+                                    )}
                                 </div>
                             ))}
-                        </div>
-
-
-
-                    </>
-                )}
+                        </section>
+                    )}
+                </div>
             </div>
         </div>
     );
 };
 
 export default Mentorship;
-
